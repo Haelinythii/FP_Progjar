@@ -1,6 +1,3 @@
-import ntpath
-
-
 class Player:
     def __init__(self, hp, experience, attack, defense, speed, inventory) -> None:
         self.level = 1
