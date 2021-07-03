@@ -1,3 +1,4 @@
+from item import itemDatabase
 from Command_wrapper import Command_Wrapper
 import socket, sys, threading, os, pickle
 
@@ -110,6 +111,27 @@ def allow_create_file(dest, args):
     p_command = pickle.dumps(command_wrapper)
     client_socket.send(p_command)
     create_file(dest, args)
+    
+def heal(dest, args):
+    print("You have been healed to max hit point.")
+
+def training_result(dest, args):
+    print(args[0])
+
+def hunting_result_success(dest, args):
+    print(f"You get {args[1]} {args[0].name}(s)! You take {args[2]} damage!")
+    
+def hunting_result_fail(dest, args):
+    print(f"You died! You lose 1 Level, 1 attack, 1 defense, and 5 HP. You get nothing!")
+
+def craft_success(dest, args):
+    print(f"Craft success!")
+
+def craft_fail(dest, args):
+    print(f"Craft fail! You don't have enough materials to craft that item")
+    
+def foraging_result(dest, args):
+    print(f"You get {args[1]} {args[0].name} from foraging!")
 
 executeable_func = {    # (dest, args)
     "friendRequest": show_new_friend_request,
@@ -126,6 +148,13 @@ executeable_func = {    # (dest, args)
     "unfriendNotif": unfriend_notification,
     "rcvMessage": receive_message,
     "attemptCreateFile": allow_create_file,
+    "heal": heal,
+    "trainingResult": training_result,
+    "huntingResultSuccess" : hunting_result_success,
+    "huntingResultFail" : hunting_result_fail,
+    "craftSuccess" : craft_success,
+    "craftFail" : craft_fail,
+    "foragingResult" : foraging_result
 }
 
 while True:
@@ -170,6 +199,34 @@ while True:
         elif command == "unfriend":
             dest = input("Masukkan nama teman yang ingin di-unfriend: ")
             args = "unfriend"
+        elif command == "training" or command == "hunting" or command == "foraging" or command == "heal" or command == "craftingList":
+            dest = username
+            args = ""
+        elif command == "crafting":
+
+            item_database = itemDatabase()
+            print("\n\nCrafting List:")
+            for category in item_database.craftable_category:
+                modifier_name = ""
+                
+                if list(category.values())[0].category == "weapon":
+                    print("\nCrafting List for weapon: ")
+                    modifier_name = "ATK"
+                elif list(category.values())[0].category == "armor":
+                    print("\nCrafting List for armor: ")
+                    modifier_name = "DEF"
+
+                for key, value in category.items():
+                    crafting_materials = []
+                    for crafting_material in value.crafting_material:
+                        crafting_materials.append(f"{crafting_material[1]} {crafting_material[0].name}")
+                    
+                    needed_material = ", ".join(crafting_materials)
+                    print(f"{key} ({value.modifier} {modifier_name}) -> {needed_material}")
+
+            dest = username
+            nama_item = input("Masukkan nama item yang ingin di craft: ")
+            args = item_database.equipment[nama_item] 
         else:
             print("Command tidak tersedia.")
             continue

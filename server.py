@@ -1,4 +1,7 @@
-import socket, threading, pickle
+from item import itemDatabase
+from player import Player
+from inventory import inventory
+import socket, threading, pickle, random
 from Command_wrapper import Command_Wrapper
 
 file_data_to_be_sent = {}
@@ -154,6 +157,67 @@ def attempt_recv_file(client_username, client_socket, dest, args):
 def attempt_send_file(client_username, client_socket, dest, args):
     dest_socket = clients[dest][0]
     send_pickle("attemptCreateFile", dest, args, dest_socket)
+    
+def training(client_username, client_socket, dest, args):
+    exp = random.randint(1, 15)
+    player_object = client_player_object[client_username]
+    if player_object.training(exp):
+        msg = f"You get {exp} experience! Level up to level {player_object.get_level()}!"
+    else:
+        msg = f"You get {exp} experience!"
+    send_pickle("trainingResult", None, (msg,), client_socket)
+
+def hunting(client_username, client_socket, dest, args):
+    
+    damage = random.randint(10, 50)
+    is_player_dead = client_player_object[client_username].take_damage_hunting(damage)
+    
+    if not is_player_dead:
+        item_amount = random.randint(1, 3)
+        hunting_material = item_database.getHuntingMaterial()
+        item = hunting_material[random.randint(0, len(hunting_material) - 1)]
+
+        client_player_object[client_username].inventory.store(item, item_amount)
+        print(client_player_object[client_username].inventory.list_item[item.name])
+        send_pickle("huntingResultSuccess", None, (item, item_amount, damage,), client_socket)
+    else:
+        send_pickle("huntingResultFail", None, None, client_socket)
+
+def crafting(client_username, client_socket, dest, args):
+    can_craft = True
+    item = args[0]
+
+    for i in item.crafting_material:
+        if client_player_object[client_username].inventory.get_item_amount(i[0]) < i[1]:
+            can_craft = False
+            break
+    
+    if can_craft:
+        for i in item.crafting_material:
+            client_player_object[client_username].inventory.remove_item(i[0], i[1])
+        
+        if item.category == "weapon":
+            client_player_object[client_username].set_weapon(item)
+            print(client_player_object[client_username].get_damage())
+        elif item.category == "armor":
+            client_player_object[client_username].set_armor(item)
+        send_pickle("craftSuccess", None, None, client_socket)
+    else:
+        send_pickle("craftFail", None, None, client_socket)
+
+def foraging(client_username, client_socket, dest, args):
+    # damage = random.randint(10, 50)
+    # is_player_dead = client_player_object[client_username].take_damage_hunting(damage)
+    
+    item_amount = 1
+    foraging_material = item_database.getForagingMaterial()
+    item = foraging_material[random.randint(0, len(foraging_material) - 1)]
+    client_player_object[client_username].inventory.store(item, item_amount)
+    send_pickle("foragingResult", None, (item, item_amount,), client_socket)
+
+def heal(client_username, client_socket, dest, args):
+    client_player_object[client_username].heal()
+    send_pickle("heal", None, None, client_socket)
 
 executeable_func = {    # client_username, client_socket, dest, args 
     "bcast": send_broadcast,
@@ -164,7 +228,12 @@ executeable_func = {    # client_username, client_socket, dest, args
     "sendMessage": send_msg,
     "unfriend": unfriend,
     "attemptRecvFile": attempt_recv_file,
-    "attemptSendFile": attempt_send_file
+    "attemptSendFile": attempt_send_file,
+    "training" : training,
+    "hunting" : hunting,
+    "crafting" : crafting,
+    "foraging" : foraging,
+    "heal" : heal,
 }
 
 def send_pickle(command, dest, args, socket):
@@ -181,6 +250,10 @@ client_friend = {}
 
 client_friend_request = {}
 
+client_player_object = {}
+
+item_database = itemDatabase()
+
 while True:
     client_socket, client_address = server_socket.accept()
     client_username = client_socket.recv(65535).decode("utf-8")
@@ -193,3 +266,4 @@ while True:
     if client_username not in client_friend.keys():
         client_friend[client_username] = []
         client_friend_request[client_username] = []
+        client_player_object[client_username] = Player(100, 0, 5, 2, 3, inventory({}, item_database))
