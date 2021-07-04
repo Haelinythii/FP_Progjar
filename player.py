@@ -1,5 +1,6 @@
 class Player:
-    def __init__(self, hp, experience, attack, defense, speed, inventory) -> None:
+    def __init__(self, name, hp, experience, attack, defense, speed, inventory) -> None:
+        self.name = name
         self.level = 1
         self.hp = hp
         self.maxhp = hp
@@ -11,16 +12,22 @@ class Player:
         self.inventory = inventory
         self.weapon = None
         self.armor = None
+        self.multiplayerRoomId = -1
 
     def get_damage(self):
-        base_damage = self.attack + self.weapon.modifier
+        base_damage = self.attack
+        if self.weapon is not None:
+            base_damage = base_damage + self.weapon.modifier
         return base_damage
 
     def take_damage_battle(self, attack):
         damage = attack - self.defense
+        if self.armor is not None:
+            damage = damage - self.armor.modifier
         if damage < 0:
             damage = 0
         self.hp = self.hp - damage
+        return (self.check_dead(), damage)
     
     def take_damage_hunting(self, damage):
         self.hp = self.hp - damage
@@ -31,6 +38,7 @@ class Player:
 
     def check_dead(self):
         if self.hp < 0:
+            self.heal()
             return True
         return False
 
@@ -43,14 +51,22 @@ class Player:
             self.level_up()
             return True
         return False
+    
+    def add_experience(self, experience):
+        is_level_up = False
+        self.experience = self.experience + experience
+        while self.experience > self.neededExpToLevelUp:
+            self.level_up()
+            is_level_up = True
+        return is_level_up, self.level
 
     def level_up(self):
-        self.experience = 0
+        self.experience = self.experience - self.neededExpToLevelUp
         #((n(n+1))/2)x100
         self.neededExpToLevelUp = self.level * (self.level + 1) * 5
         self.level = self.level + 1
 
-        self.hp = self.hp + 5
+        self.maxhp = self.maxhp + 5
         self.attack = self.attack + 1
         self.defense = self.defense + 1
         self.speed = self.speed + 1
@@ -61,7 +77,7 @@ class Player:
         self.level = self.level - 1
         self.neededExpToLevelUp = self.level * (self.level + 1) * 5
 
-        self.hp = self.hp - 5
+        self.maxhp = self.maxhp - 5
         self.attack = self.attack - 1
         self.defense = self.defense - 1
         self.speed = self.speed - 1

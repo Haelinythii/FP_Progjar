@@ -1,3 +1,4 @@
+from matchroom import Matchroom
 from item import itemDatabase
 from player import Player
 from inventory import inventory
@@ -219,6 +220,43 @@ def heal(client_username, client_socket, dest, args):
     client_player_object[client_username].heal()
     send_pickle("heal", None, None, client_socket)
 
+def view_stats(client_username, client_socket, dest, args):
+    player_object = client_player_object[client_username]
+    send_pickle("viewStats", None, (player_object,), client_socket)
+
+def show_player_list(client_username, client_socket, dest, args):
+    players = ', '.join(clients.keys())
+    send_pickle("playerList", None, (players,), client_socket)
+
+def matchmake_player(client_username, client_socket, dest, args):
+    if len(match_rooms) == 0:
+        create_room(client_username, client_socket)
+        send_pickle("createRoom", None, None, client_socket)
+        return
+
+    for room in match_rooms:
+        if room.full == False:
+            client_player_object[client_username].multiplayerRoomId = room.roomId
+            room.set_playerTwo(client_player_object[client_username], client_socket)
+            opponent = room.get_opposing_player(client_username)
+            send_pickle("matchFound", None, (opponent,), client_socket)
+            send_pickle("matchFound", None, (client_username,), clients[opponent][0])
+            room.start_thread()
+            return
+
+    create_room(client_username, client_socket)
+    send_pickle("createRoom", None, None, client_socket)
+
+def create_room(client_username, client_socket):
+    roomId = len(match_rooms)
+    print(roomId)
+    match_rooms.append(Matchroom(roomId, client_player_object[client_username], client_socket))
+    client_player_object[client_username].multiplayerRoomId = roomId
+
+def register_attack(client_username, client_socket, dest, args):
+    player = client_player_object[client_username]
+    match_rooms[player.multiplayerRoomId].register_attack(args[0], player)
+
 executeable_func = {    # client_username, client_socket, dest, args 
     "bcast": send_broadcast,
     "friendList": show_friend_list,
@@ -234,6 +272,10 @@ executeable_func = {    # client_username, client_socket, dest, args
     "crafting" : crafting,
     "foraging" : foraging,
     "heal" : heal,
+    "myStats": view_stats,
+    "playerList": show_player_list,
+    "matchmake": matchmake_player,
+    "registerAttack": register_attack,
 }
 
 def send_pickle(command, dest, args, socket):
@@ -254,6 +296,8 @@ client_player_object = {}
 
 item_database = itemDatabase()
 
+match_rooms = []
+
 while True:
     client_socket, client_address = server_socket.accept()
     client_username = client_socket.recv(65535).decode("utf-8")
@@ -266,4 +310,4 @@ while True:
     if client_username not in client_friend.keys():
         client_friend[client_username] = []
         client_friend_request[client_username] = []
-        client_player_object[client_username] = Player(100, 0, 5, 2, 3, inventory({}, item_database))
+        client_player_object[client_username] = Player(client_username, 100, 0, 25, 2, 3, inventory({}, item_database))

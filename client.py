@@ -1,6 +1,8 @@
-from item import itemDatabase
+from item import itemDatabase, weapon
 from Command_wrapper import Command_Wrapper
-import socket, sys, threading, os, pickle
+import socket, sys, threading, os, pickle, time
+
+
 
 def read_msg(client_socket):
     while True:
@@ -51,7 +53,7 @@ def show_friend_request_accepted(dest, args):
     print(f"Friend request accepted! You are now friend with {args[0]}")
 
 def show_friend_list(dest, args):
-    friends, friendRequests  = args
+    friends, friendRequests = args
     print(f"List of friend: {friends}")
     print(f"List of incoming friend request: {friendRequests}")
 
@@ -133,6 +135,69 @@ def craft_fail(dest, args):
 def foraging_result(dest, args):
     print(f"You get {args[1]} {args[0].name} from foraging!")
 
+def view_stats(dest, args):
+    player = args[0]
+
+    print(f"\n\nYour Level: {player.level}")
+    print(f"Experience: {player.experience}/{player.neededExpToLevelUp}")
+    print(f"HP: {player.hp}/{player.maxhp}")
+    print(f"Your Stats: ")
+    print(f"\tAttack: {player.attack}")
+    print(f"\tDefense: {player.defense}")
+    print(f"\tSpeed: {player.speed}")
+    print(f"Your Equipment: ")
+    if player.weapon is None:
+        print(f"\tWeapon: None")
+    else:
+        print(f"\tWeapon: {player.weapon.name}")
+    if player.armor is None:
+        print(f"\tArmor: None")
+    else:
+        print(f"\tArmor: {player.armor.name}\n\n")
+
+def show_player_list(dest, args):
+    players = args[0]
+    print(f"List of player: {players}")
+
+def show_win_message(dest, args):
+    
+    print(f"You win your battle against {args[0]}!")
+    if args[1]:
+        print(f"Level up to level {args[2]}!")
+    global state_app
+    state_app = 1
+    print_available_command(state_app)
+    
+
+def show_lose_message(dest, args):
+    print(f"You lose your battle against {args[0]}!")
+    global state_app
+    state_app = 1
+    print_available_command(state_app)
+
+def show_room_found(dest, args):
+    global state_app
+    state_app = 2
+    print_available_command(state_app)
+    print(f"Match found! You will battle against {args[0]}!")
+
+def room_created(dest, args):
+    global state_app
+    state_app = 2
+    print(f"Room is created for you, please wait for other player to join.")
+
+def deal_damage(dest, args):
+    print(f"You deal {args[0]} damage to your opponent! The oppenent has {args[1]} HP remain.")
+
+def take_damage(dest, args):
+    print(f"You take {args[0]} damage from your opponent! You have {args[1]} HP remain.")
+
+def miss_attack(dest, args):
+    print("Your attack missed!")
+
+def evade_attack(dest, args):
+    print("You evade opponent's attack!")
+
 executeable_func = {    # (dest, args)
     "friendRequest": show_new_friend_request,
     "acceptedRequest": show_friend_request_accepted,
@@ -154,12 +219,38 @@ executeable_func = {    # (dest, args)
     "huntingResultFail" : hunting_result_fail,
     "craftSuccess" : craft_success,
     "craftFail" : craft_fail,
-    "foragingResult" : foraging_result
+    "foragingResult" : foraging_result,
+    "viewStats": view_stats,
+    "playerList": show_player_list,
+    "matchWinner" : show_win_message,
+    "matchLoser" : show_lose_message,
+    "matchFound" : show_room_found,
+    "createRoom" : room_created,
+    "dealDamage" : deal_damage,
+    "takeDamage" : take_damage,
+    "missAttack" : miss_attack,
+    "evadeAttack" : evade_attack,
 }
 
-while True:
+# State
+# 1 single
+# 2 multiplayer
 
-    command = input("\nCommand yang tersedia:\nbcast untuk broadcast pesan ke semua teman\naddFriend untuk mengirim request pertemanan\nacceptFriend untuk menerima request pertemanan yang masuk\nfriendList untuk melihat list dari request pertemanan\nsendFile untuk mengirim file ke seorang teman\nsendMessage untuk mengirim pesan ke seorang teman\nMasukkan command: ")
+global state_app
+state_app = 1
+
+def print_available_command(state_app):
+    if state_app == 1 :
+        command_string = "\nCommand yang tersedia:\nbcast untuk broadcast pesan ke semua teman\naddFriend untuk mengirim request pertemanan\nacceptFriend untuk menerima request pertemanan yang masuk\nfriendList untuk melihat list dari request pertemanan\nunfriend untuk menghapus pertemanan\nsendFile untuk mengirim file ke seorang teman\nsendMessage untuk mengirim pesan ke seorang teman\nplayerList untuk melihat semua player yang sedang aktif\ntraining untuk melakukan training, mendapatkan exp\nhunting untuk berburu, mendapatkan loot (memotong HP)\nforaging untuk mengumpulkan bahan material\nheal untuk menyembuhkan HP sampai penuh\ncrafting untuk membuka menu crafting, yang di dalamnya terdapat daftar craftable item\nmyStats untuk melihat stats milik player\nmatchmake untuk mencari dan melawan musuh secara acak"
+    elif state_app == 2:
+        command_string = "\nAttack yang tersedia:\nFist: 100% Damage dan 100% Accuracy\nKick: 200% Damage dan 70% Accuracy\nSlash: 400% Damage dan 40% Accuracy\n"
+    print(command_string)
+
+print_available_command(state_app)
+
+while True:
+    time.sleep(0.1)
+    command = input("Masukkan command: ")
 
     if command == "sendFile":
         dest = input("Masukkan tujuan pengiriman file: ")
@@ -179,10 +270,22 @@ while True:
     elif command == "exit":
         client_socket.close()
         break
+    elif state_app == 2:
+        if command == "Fist" or command == "Kick" or command == "Slash":
+            args = command
+            command = "registerAttack"
+            dest = username
+        else:
+            print("Tipe attack tidak tersedia.")
+            continue
+        
+        command_wrapper = Command_Wrapper(command, dest, (args,))
+        p_command = pickle.dumps(command_wrapper)
+        client_socket.send(p_command)
     else:
-        if command == "friendList":
-            dest = "friendList"
-            args = "a"
+        if command == "friendList" or command == "playerList":
+            dest = username
+            args = ""
         elif command == "addFriend" or command == "acceptFriend":
             dest = input("Masukkan nama teman anda: ")
             if is_dest_self_username(dest):
@@ -199,7 +302,7 @@ while True:
         elif command == "unfriend":
             dest = input("Masukkan nama teman yang ingin di-unfriend: ")
             args = "unfriend"
-        elif command == "training" or command == "hunting" or command == "foraging" or command == "heal" or command == "craftingList":
+        elif command == "training" or command == "hunting" or command == "foraging" or command == "heal" or command == "myStats" or command == "matchmake":
             dest = username
             args = ""
         elif command == "crafting":
