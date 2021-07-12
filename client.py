@@ -243,7 +243,7 @@ def print_available_command(state_app):
     if state_app == 1 :
         command_string = "\nCommand yang tersedia:\nbcast untuk broadcast pesan ke semua teman\naddFriend untuk mengirim request pertemanan\nacceptFriend untuk menerima request pertemanan yang masuk\nfriendList untuk melihat list dari request pertemanan\nunfriend untuk menghapus pertemanan\nsendFile untuk mengirim file ke seorang teman\nsendMessage untuk mengirim pesan ke seorang teman\nplayerList untuk melihat semua player yang sedang aktif\ntraining untuk melakukan training, mendapatkan exp\nhunting untuk berburu, mendapatkan loot (memotong HP)\nforaging untuk mengumpulkan bahan material\nheal untuk menyembuhkan HP sampai penuh\ncrafting untuk membuka menu crafting, yang di dalamnya terdapat daftar craftable item\nmyStats untuk melihat stats milik player\nmatchmake untuk mencari dan melawan musuh secara acak"
     elif state_app == 2:
-        command_string = "\nAttack yang tersedia:\nFist: 100% Damage dan 100% Accuracy\nKick: 200% Damage dan 70% Accuracy\nSlash: 400% Damage dan 40% Accuracy\n"
+        command_string = "\nAttack yang tersedia:\nFist: 100% Damage dan 100% Accuracy\nKick: 200% Damage dan 70% Accuracy\nSlash: 400% Damage dan 40% Accuracy\nForfeit: lose automatically"
     print(command_string)
 
 print_available_command(state_app)
@@ -274,6 +274,10 @@ while True:
         if command == "Fist" or command == "Kick" or command == "Slash":
             args = command
             command = "registerAttack"
+            dest = username
+        elif command == "Forfeit":
+            args = command
+            command = "forfeit"
             dest = username
         else:
             print("Tipe attack tidak tersedia.")

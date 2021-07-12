@@ -90,6 +90,12 @@ class Matchroom:
         command_wrapper = Command_Wrapper(command, dest, args)
         p_command = pickle.dumps(command_wrapper)
         socket.send(p_command)
+    
+    def forfeit(self, player):
+        if player.name == self.playerOne.name:
+            self.game_end(self.playerTwo, player)
+        else:
+            self.game_end(self.playerOne, player)
 
     def update(self):
         while True:

@@ -257,6 +257,10 @@ def register_attack(client_username, client_socket, dest, args):
     player = client_player_object[client_username]
     match_rooms[player.multiplayerRoomId].register_attack(args[0], player)
 
+def forfeit(client_username, client_socket, dest, args):
+    player = client_player_object[client_username]
+    match_rooms[player.multiplayerRoomId].forfeit(player)
+
 executeable_func = {    # client_username, client_socket, dest, args 
     "bcast": send_broadcast,
     "friendList": show_friend_list,
@@ -276,6 +280,7 @@ executeable_func = {    # client_username, client_socket, dest, args
     "playerList": show_player_list,
     "matchmake": matchmake_player,
     "registerAttack": register_attack,
+    "forfeit": forfeit,
 }
 
 def send_pickle(command, dest, args, socket):
